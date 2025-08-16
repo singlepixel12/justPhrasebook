@@ -88,14 +88,13 @@ function createHeader() {
   header.id = "app-header";
   header.className = [
     "sticky top-0 z-10",
-    "ios-safe",
     "backdrop-blur-xl",
     "bg-white/5",
     "border-b border-white/10",
   ].join(" ");
 
   const inner = document.createElement("div");
-  inner.className = "header-inner max-w-md mx-auto px-4 py-3 flex items-center gap-3";
+  inner.className = "max-w-md mx-auto px-4 py-3 flex items-center gap-3";
 
   const title = document.createElement("h1");
   title.className = "text-lg font-semibold tracking-tight text-slate-100";
@@ -390,8 +389,7 @@ function render() {
   // Ensure connection status reflects current network state
   updateConnectionBadge();
 
-  // Setup condense-on-scroll behavior
-  setupHeaderCondenseOnScroll();
+  // No condense-on-scroll behavior
 }
 
 function createFooter() {
@@ -626,38 +624,5 @@ async function init() {
 
 document.addEventListener("DOMContentLoaded", init);
 
-// Condense header inner padding on downward scroll; restore on upward/near top
-function setupHeaderCondenseOnScroll() {
-  const header = document.getElementById("app-header");
-  if (!header) return;
-  let lastY = window.scrollY;
-  let ticking = false;
-
-  function update() {
-    const currentY = window.scrollY;
-    const isScrollingDown = currentY > lastY + 4; // small threshold
-    const isScrollingUp = currentY < lastY - 4;
-    const nearTop = currentY < 8;
-
-    // Never hide; only condense padding. Keep expanded while dropdown is open.
-    if (state.dropdownOpen || isScrollingUp || nearTop) {
-      header.classList.remove("header-condensed");
-    } else if (isScrollingDown) {
-      header.classList.add("header-condensed");
-    }
-    lastY = currentY;
-    ticking = false;
-  }
-
-  window.addEventListener(
-    "scroll",
-    () => {
-      if (!ticking) {
-        window.requestAnimationFrame(update);
-        ticking = true;
-      }
-    },
-    { passive: true }
-  );
-}
+// (Removed) condense-on-scroll
 

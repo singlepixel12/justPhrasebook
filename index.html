@@ -45,15 +45,7 @@
       };
     </script>
     <style>
-      /* Base top padding for all platforms (extra 12px) */
-      header.ios-safe { padding-top: 0.75rem; transition: padding-top 200ms ease; }
-      /* On non-iOS (no safe-area), condense removes just the extra 12px */
-      header.header-condensed.ios-safe { padding-top: 0; }
-      /* iOS standalone safe-area: keep safe-area, drop only the extra 12px when condensed */
-      @supports (padding: env(safe-area-inset-top)) {
-        header.ios-safe { padding-top: calc(env(safe-area-inset-top) + 0.75rem); }
-        header.header-condensed.ios-safe { padding-top: env(safe-area-inset-top); }
-      }
+      /* (Reverted) No extra safe-area padding on header */
       /* App-like touch feel */
       * { -webkit-tap-highlight-color: transparent; }
       html, body { overscroll-behavior-y: none; }
