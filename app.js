@@ -9,10 +9,60 @@ const state = {
   dropdownOpen: false,
 };
 
+// Minimal IndexedDB helpers (phrases + UI state)
+function dbp(name = "phrasebook", version = 1) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, version);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("phrases")) {
+        db.createObjectStore("phrases", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("state")) {
+        db.createObjectStore("state", { keyPath: "key" });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbPut(store, value) {
+  const db = await dbp();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function idbGet(store, key) {
+  const db = await dbp();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const req = tx.objectStore(store).get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGetAll(store) {
+  const db = await dbp();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readonly");
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function setTargetLanguage(code) {
   state.targetLanguage = code;
   localStorage.setItem("targetLanguage", code);
   state.dropdownOpen = false;
+  // Persist UI state to IndexedDB
+  saveState({ targetLanguage: code, showPolite: state.showPolite }).catch(() => {});
   render();
 }
 
@@ -24,6 +74,8 @@ function getLanguageLabel(code) {
 function togglePolite() {
   state.showPolite = !state.showPolite;
   localStorage.setItem("showPolite", state.showPolite ? "1" : "0");
+  // Persist UI state to IndexedDB
+  saveState({ targetLanguage: state.targetLanguage, showPolite: state.showPolite }).catch(() => {});
   render();
 }
 
@@ -322,11 +374,137 @@ function render() {
 
   const header = createHeader();
   const list = createList();
+  const footer = createFooter();
 
   root.appendChild(header);
   root.appendChild(list);
+  root.appendChild(footer);
+  // Ensure connection status reflects current network state
+  updateConnectionBadge();
 }
 
-document.addEventListener("DOMContentLoaded", render);
+function createFooter() {
+  const footer = document.createElement("footer");
+  footer.id = "connection-footer";
+  footer.className = "pointer-events-none mt-12 mb-10 flex justify-center";
 
+  const badge = document.createElement("div");
+  badge.className = [
+    "flex items-center gap-2",
+    "rounded-full px-3 py-1.5",
+    "bg-white/10 backdrop-blur-xl",
+    "ring-1 ring-white/15",
+    "shadow-lg shadow-black/30",
+    "text-xs text-slate-200",
+  ].join(" ");
+
+  const icon = document.createElement("span");
+  icon.id = "connection-badge-dot";
+  icon.className = "inline-block h-2 w-2 rounded-full";
+
+  const label = document.createElement("span");
+  label.id = "connection-badge-text";
+  label.textContent = "";
+
+  badge.appendChild(icon);
+  badge.appendChild(label);
+  footer.appendChild(badge);
+  return footer;
+}
+
+function updateConnectionBadge() {
+  const isOffline = !navigator.onLine;
+  const dot = document.getElementById("connection-badge-dot");
+  const text = document.getElementById("connection-badge-text");
+  if (!dot || !text) return;
+  if (isOffline) {
+    dot.className = "inline-block h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_0_2px_rgba(251,191,36,0.3)]";
+    text.textContent = "Offline mode";
+  } else {
+    dot.className = "inline-block h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_0_2px_rgba(16,185,129,0.35)]";
+    text.textContent = "Online";
+  }
+}
+
+// Persist and restore UI state
+async function saveState(partial) {
+  const existing = (await idbGet("state", "ui"))?.value || {};
+  await idbPut("state", { key: "ui", value: { ...existing, ...partial } });
+}
+
+async function restoreState() {
+  try {
+    const s = await idbGet("state", "ui");
+    if (s && s.value) {
+      applyUiState(s.value);
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+function applyUiState(uiv) {
+  if (typeof uiv.targetLanguage === "string") {
+    state.targetLanguage = uiv.targetLanguage;
+    localStorage.setItem("targetLanguage", uiv.targetLanguage);
+  }
+  if (typeof uiv.showPolite === "boolean") {
+    state.showPolite = uiv.showPolite;
+    localStorage.setItem("showPolite", uiv.showPolite ? "1" : "0");
+  }
+}
+
+function readCurrentUiState() {
+  return { targetLanguage: state.targetLanguage, showPolite: state.showPolite };
+}
+
+// Store phrases into IndexedDB for offline resilience
+async function persistPhrases() {
+  try {
+    if (Array.isArray(phrases) && phrases.length) {
+      await Promise.all(phrases.map((p) => idbPut("phrases", { ...p })));
+    }
+  } catch (_) {
+    // ignore
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    saveState(readCurrentUiState()).catch(() => {});
+  } else if (document.visibilityState === "visible") {
+    restoreState().then(() => {
+      render();
+    }).catch(() => {});
+  }
+});
+
+async function init() {
+  // Register Service Worker and request persistent storage
+  if ("serviceWorker" in navigator) {
+    try {
+      await navigator.serviceWorker.register("/sw.js");
+    } catch (_) {
+      // ignore
+    }
+    if (navigator.storage && navigator.storage.persist) {
+      try {
+        navigator.storage.persist();
+      } catch (_) {
+        // ignore
+      }
+    }
+  }
+
+  // Restore UI state, persist phrases, then render
+  await restoreState();
+  await persistPhrases();
+  render();
+
+  // Live connectivity updates without full re-render
+  window.addEventListener("online", updateConnectionBadge);
+  window.addEventListener("offline", updateConnectionBadge);
+}
+
+document.addEventListener("DOMContentLoaded", init);
 
