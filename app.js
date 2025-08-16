@@ -83,6 +83,7 @@ function createHeader() {
   const header = document.createElement("header");
   header.className = [
     "sticky top-0 z-10",
+    "ios-safe",
     "backdrop-blur-xl",
     "bg-white/5",
     "border-b border-white/10",
@@ -499,6 +500,19 @@ async function init() {
   // Restore UI state, persist phrases, then render
   await restoreState();
   await persistPhrases();
+  // Handle manifest shortcut deep links like /?lang=ko
+  try {
+    const params = new URLSearchParams(location.search);
+    const langParam = params.get("lang");
+    if (langParam) {
+      const isSupported = supportedLanguages.some((l) => l.code === langParam);
+      if (isSupported) {
+        state.targetLanguage = langParam;
+        localStorage.setItem("targetLanguage", langParam);
+        await saveState({ targetLanguage: langParam, showPolite: state.showPolite });
+      }
+    }
+  } catch (_) {}
   render();
 
   // Live connectivity updates without full re-render

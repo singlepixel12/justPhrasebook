@@ -1,10 +1,13 @@
-const STATIC_CACHE = 'static-v1';
-const DYNAMIC_CACHE = 'dynamic-v1';
+const STATIC_CACHE = 'static-v2';
+const DYNAMIC_CACHE = 'dynamic-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/app.js',
   '/data/phrases.js',
+  '/manifest.webmanifest',
+  '/assets/favicon.svg',
+  '/assets/safari-pinned-tab.svg',
 ];
 
 // Install: cache app shell

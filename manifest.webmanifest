@@ -1,0 +1,43 @@
+{
+  "name": "Phrasebook",
+  "short_name": "Phrasebook",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone"],
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/assets/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Open Korean",
+      "short_name": "Korean",
+      "url": "/?lang=ko",
+      "icons": [{ "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Open Japanese",
+      "short_name": "Japanese",
+      "url": "/?lang=ja",
+      "icons": [{ "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "Open Chinese",
+      "short_name": "Chinese",
+      "url": "/?lang=zh",
+      "icons": [{ "src": "/assets/favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "description": "A beautiful offline-first phrasebook with polite/casual variants."
+}
+
+
