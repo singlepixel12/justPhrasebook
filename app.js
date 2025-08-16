@@ -7,6 +7,8 @@ const state = {
   targetLanguage: localStorage.getItem("targetLanguage") || supportedLanguages[0].code,
   showPolite: localStorage.getItem("showPolite") === "1", // default off (casual only)
   dropdownOpen: false,
+  deferredInstallPromptEvent: null,
+  showInstallNudge: false,
 };
 
 // Minimal IndexedDB helpers (phrases + UI state)
@@ -68,7 +70,9 @@ function setTargetLanguage(code) {
 
 function getLanguageLabel(code) {
   const lang = supportedLanguages.find((l) => l.code === code);
-  return lang ? lang.label : code;
+  if (!lang) return code;
+  // Remove parenthetical qualifiers for display (e.g., Chinese (Simplified) -> Chinese)
+  return lang.label.replace(/\s*\([^\)]*\)\s*$/, "");
 }
 
 function togglePolite() {
@@ -81,6 +85,7 @@ function togglePolite() {
 
 function createHeader() {
   const header = document.createElement("header");
+  header.id = "app-header";
   header.className = [
     "sticky top-0 z-10",
     "ios-safe",
@@ -90,7 +95,7 @@ function createHeader() {
   ].join(" ");
 
   const inner = document.createElement("div");
-  inner.className = "max-w-md mx-auto px-4 py-3 flex items-center gap-3";
+  inner.className = "header-inner max-w-md mx-auto px-4 py-3 flex items-center gap-3";
 
   const title = document.createElement("h1");
   title.className = "text-lg font-semibold tracking-tight text-slate-100";
@@ -107,7 +112,7 @@ function createHeader() {
   ddBtn.type = "button";
   ddBtn.className = [
     "flex items-center gap-2",
-    "rounded-xl px-3 py-2",
+    "rounded-xl px-3 py-2.5",
     "bg-white/10",
     "ring-1 ring-white/15",
     "text-sm text-slate-100",
@@ -135,7 +140,7 @@ function createHeader() {
 
   const ddMenu = document.createElement("div");
   ddMenu.className = [
-    "absolute right-0 mt-2 w-40 p-1",
+    "absolute right-0 mt-2 w-44 p-1.5",
     "rounded-xl backdrop-blur-xl",
     "bg-white/10 ring-1 ring-white/15 shadow-lg shadow-black/30",
     state.dropdownOpen ? "block" : "hidden",
@@ -145,7 +150,7 @@ function createHeader() {
     const item = document.createElement("button");
     item.type = "button";
     item.className = [
-      "w-full text-left px-3 py-2 rounded-lg",
+      "w-full text-left px-3 py-2.5 rounded-lg",
       "text-sm",
       code === state.targetLanguage ? "bg-white/15 text-slate-50" : "text-slate-200 hover:bg-white/10",
     ].join(" ");
@@ -163,7 +168,7 @@ function createHeader() {
   const politeBtn = document.createElement("button");
   politeBtn.type = "button";
   politeBtn.className = [
-    "rounded-xl px-3 py-2",
+    "rounded-xl px-3 py-2.5",
     "bg-white/10 ring-1 ring-white/15",
     state.showPolite
       ? "bg-white/20 text-slate-50 ring-white/25 shadow-inner translate-y-[1px]"
@@ -376,12 +381,17 @@ function render() {
   const header = createHeader();
   const list = createList();
   const footer = createFooter();
+  const installNudge = createInstallNudge();
 
   root.appendChild(header);
   root.appendChild(list);
   root.appendChild(footer);
+  if (installNudge) root.appendChild(installNudge);
   // Ensure connection status reflects current network state
   updateConnectionBadge();
+
+  // Setup condense-on-scroll behavior
+  setupHeaderCondenseOnScroll();
 }
 
 function createFooter() {
@@ -411,6 +421,99 @@ function createFooter() {
   badge.appendChild(label);
   footer.appendChild(badge);
   return footer;
+}
+
+function createInstallNudge() {
+  // Only show if we captured a PWA install prompt and the user hasn't dismissed before
+  if (!state.showInstallNudge) return null;
+  const dismissed = localStorage.getItem("installNudgeDismissed") === "1";
+  if (dismissed) return null;
+
+  const wrap = document.createElement("div");
+  wrap.className = "fixed bottom-4 left-0 right-0 flex justify-center px-4 z-20";
+
+  const card = document.createElement("div");
+  card.className = [
+    "max-w-md w-full",
+    "rounded-2xl px-4 py-3",
+    "bg-white/10 backdrop-blur-xl",
+    "ring-1 ring-white/15",
+    "shadow-lg shadow-black/30",
+    "text-sm text-slate-100",
+    "flex items-center gap-3",
+  ].join(" ");
+
+  const text = document.createElement("div");
+  text.className = "flex-1";
+  text.textContent = "Install Phrasebook for a full-screen, offline experience.";
+
+  const btnInstall = document.createElement("button");
+  btnInstall.type = "button";
+  btnInstall.className = [
+    "rounded-xl px-3 py-2",
+    "bg-blue-500/20 text-blue-100",
+    "ring-1 ring-blue-400/30",
+    "hover:bg-blue-500/25 focus:outline-none focus:ring-2 focus:ring-blue-400/50",
+    "text-xs",
+  ].join(" ");
+  btnInstall.textContent = "Install";
+  btnInstall.addEventListener("click", async () => {
+    try {
+      if (state.deferredInstallPromptEvent) {
+        state.deferredInstallPromptEvent.prompt();
+        const { outcome } = await state.deferredInstallPromptEvent.userChoice;
+        // Hide nudge if accepted; snooze otherwise
+        if (outcome === "accepted") {
+          state.showInstallNudge = false;
+          localStorage.setItem("installNudgeDismissed", "1");
+          render();
+        }
+      }
+    } catch (_) {}
+  });
+
+  const btnClose = document.createElement("button");
+  btnClose.type = "button";
+  btnClose.className = [
+    "rounded-xl px-3 py-2",
+    "bg-white/10 text-slate-200",
+    "ring-1 ring-white/15",
+    "hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white/30",
+    "text-xs",
+  ].join(" ");
+  btnClose.textContent = "Not now";
+  btnClose.addEventListener("click", () => {
+    state.showInstallNudge = false;
+    localStorage.setItem("installNudgeDismissed", "1");
+    render();
+  });
+
+  card.appendChild(text);
+  card.appendChild(btnClose);
+  card.appendChild(btnInstall);
+  wrap.appendChild(card);
+  return wrap;
+}
+
+function setupInstallPromptCapture() {
+  // Chrome/Edge Android beforeinstallprompt
+  window.addEventListener("beforeinstallprompt", (e) => {
+    // Prevent the mini-infobar
+    e.preventDefault();
+    state.deferredInstallPromptEvent = e;
+    // Show our nudge if not dismissed previously
+    if (localStorage.getItem("installNudgeDismissed") !== "1") {
+      state.showInstallNudge = true;
+      render();
+    }
+  });
+
+  // Detect already-installed (standalone) and hide nudge
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone;
+  if (isStandalone) {
+    state.showInstallNudge = false;
+    localStorage.setItem("installNudgeDismissed", "1");
+  }
 }
 
 function updateConnectionBadge() {
@@ -518,7 +621,43 @@ async function init() {
   // Live connectivity updates without full re-render
   window.addEventListener("online", updateConnectionBadge);
   window.addEventListener("offline", updateConnectionBadge);
+  setupInstallPromptCapture();
 }
 
 document.addEventListener("DOMContentLoaded", init);
+
+// Condense header inner padding on downward scroll; restore on upward/near top
+function setupHeaderCondenseOnScroll() {
+  const header = document.getElementById("app-header");
+  if (!header) return;
+  let lastY = window.scrollY;
+  let ticking = false;
+
+  function update() {
+    const currentY = window.scrollY;
+    const isScrollingDown = currentY > lastY + 4; // small threshold
+    const isScrollingUp = currentY < lastY - 4;
+    const nearTop = currentY < 8;
+
+    // Never hide; only condense padding. Keep expanded while dropdown is open.
+    if (state.dropdownOpen || isScrollingUp || nearTop) {
+      header.classList.remove("header-condensed");
+    } else if (isScrollingDown) {
+      header.classList.add("header-condensed");
+    }
+    lastY = currentY;
+    ticking = false;
+  }
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!ticking) {
+        window.requestAnimationFrame(update);
+        ticking = true;
+      }
+    },
+    { passive: true }
+  );
+}
 

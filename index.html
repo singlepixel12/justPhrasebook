@@ -45,13 +45,19 @@
       };
     </script>
     <style>
-      /* iOS standalone safe-area compensation so content doesn't sit under the status bar */
+      /* Base top padding for all platforms (extra 12px) */
+      header.ios-safe { padding-top: 0.75rem; transition: padding-top 200ms ease; }
+      /* On non-iOS (no safe-area), condense removes just the extra 12px */
+      header.header-condensed.ios-safe { padding-top: 0; }
+      /* iOS standalone safe-area: keep safe-area, drop only the extra 12px when condensed */
       @supports (padding: env(safe-area-inset-top)) {
-        header.ios-safe { padding-top: env(safe-area-inset-top); }
+        header.ios-safe { padding-top: calc(env(safe-area-inset-top) + 0.75rem); }
+        header.header-condensed.ios-safe { padding-top: env(safe-area-inset-top); }
       }
       /* App-like touch feel */
       * { -webkit-tap-highlight-color: transparent; }
       html, body { overscroll-behavior-y: none; }
+      button, a { touch-action: manipulation; }
     </style>
   </head>
   <body class="bg-black text-slate-100 antialiased selection:bg-blue-500/30 selection:text-slate-100">
