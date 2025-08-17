@@ -2,6 +2,10 @@
 
 A beautiful, mobile-first phrasebook web application with a modern dark glass UI design. Learn essential phrases in Korean, Japanese, and Chinese with pronunciation guides and polite/casual variants.
 
+## 🔗 Live Demo
+
+Visit the app: [just-phrasebook.vercel.app](https://just-phrasebook.vercel.app/)
+
 ## 🌟 Features
 
 - **Multi-language Support**: Korean, Japanese, and Chinese (Simplified)
@@ -18,8 +22,8 @@ A beautiful, mobile-first phrasebook web application with a modern dark glass UI
 - **Frontend**: Vanilla JavaScript (ES6+)
 - **Styling**: Tailwind CSS (CDN)
 - **Storage**: IndexedDB for offline data persistence
-- **Caching**: Service Worker for offline functionality
-- **Deployment**: GitHub Pages
+- **PWA**: Service Worker for offline functionality (no polyfills; pwacompat not used)
+- **Deployment**: Vercel — live at [just-phrasebook.vercel.app](https://just-phrasebook.vercel.app/)
 
 ## 📱 Screenshots
 
@@ -41,12 +45,16 @@ The app features a sleek dark glass UI with:
 
 ```
 justPhrasebook/
-├── index.html          # Main HTML file
-├── app.js              # Core application logic
+├── index.html              # Main HTML file
+├── app.js                  # Core application logic
 ├── data/
-│   └── phrases.js      # Phrase data and language definitions
-├── sw.js               # Service Worker for offline functionality
-└── README.md           # This file
+│   └── phrases.js          # Phrase data and language definitions
+├── sw.js                   # Service Worker (offline/PWA)
+├── manifest.webmanifest    # PWA manifest
+├── assets/                 # Icons/assets for PWA and favicon
+│   ├── favicon.svg
+│   └── safari-pinned-tab.svg
+└── README.md               # This file
 ```
 
 

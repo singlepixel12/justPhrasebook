@@ -1,14 +1,16 @@
 const STATIC_CACHE = 'static-v2';
 const DYNAMIC_CACHE = 'dynamic-v2';
+// Compute base path so assets work under subpaths (e.g., GitHub Pages)
+const BASE_PATH = new URL('./', self.location).pathname; // e.g., '/repo/' or '/'
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/app.js',
-  '/data/phrases.js',
-  '/manifest.webmanifest',
-  '/assets/favicon.svg',
-  '/assets/safari-pinned-tab.svg',
-];
+  '',
+  'index.html',
+  'app.js',
+  'data/phrases.js',
+  'manifest.webmanifest',
+  'assets/favicon.svg',
+  'assets/safari-pinned-tab.svg',
+].map((p) => BASE_PATH + p);
 
 // Install: cache app shell
 self.addEventListener('install', (event) => {

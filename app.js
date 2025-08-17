@@ -49,16 +49,6 @@ async function idbGet(store, key) {
   });
 }
 
-async function idbGetAll(store) {
-  const db = await dbp();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(store, "readonly");
-    const req = tx.objectStore(store).getAll();
-    req.onsuccess = () => resolve(req.result || []);
-    req.onerror = () => reject(req.error);
-  });
-}
-
 function setTargetLanguage(code) {
   state.targetLanguage = code;
   localStorage.setItem("targetLanguage", code);
@@ -212,6 +202,30 @@ function getPronunciation(phrase, lang, polite = false) {
   return phrase[styledKey] || phrase[genericKey] || "";
 }
 
+function createPronunciationRow(pronunciation, textSizeClass) {
+  const row = document.createElement("div");
+  row.className = "mt-1 flex flex-wrap items-center gap-1.5";
+  tokenizePronunciation(pronunciation).forEach((token) => {
+    const span = document.createElement("span");
+    if (["/", "?", "!", ","].includes(token)) {
+      span.className = "px-1 text-slate-400";
+      span.textContent = token;
+    } else {
+      span.className = [
+        textSizeClass + " leading-tight",
+        "px-1.5 py-0.5",
+        "rounded-lg",
+        "bg-white/10 ring-1 ring-white/15",
+        "shadow-sm shadow-black/20",
+        "text-slate-50",
+      ].join(" ");
+      span.textContent = token;
+    }
+    row.appendChild(span);
+  });
+  return row;
+}
+
 function createPhraseItem(phrase) {
   const card = document.createElement("article");
   card.className = [
@@ -232,36 +246,7 @@ function createPhraseItem(phrase) {
 
   // Pronunciation as large syllable chips
   const pronStr = getPronunciation(phrase, state.targetLanguage, false);
-  const pronRow = document.createElement("div");
-  pronRow.className = "mt-1 flex flex-wrap items-center gap-1.5";
-
-  tokenizePronunciation(pronStr).forEach((token) => {
-    const span = document.createElement("span");
-    if (token === "/") {
-      span.className = "px-1 text-slate-400";
-      span.textContent = "/";
-    } else if (token === "?") {
-      span.className = "px-1 text-slate-400";
-      span.textContent = "?";
-    } else if (token === "!") {
-      span.className = "px-1 text-slate-400";
-      span.textContent = "!";
-    } else if (token === ",") {
-      span.className = "px-1 text-slate-400";
-      span.textContent = ",";
-    } else {
-      span.className = [
-        "text-xl leading-tight",
-        "px-1.5 py-0.5",
-        "rounded-lg",
-        "bg-white/10 ring-1 ring-white/15",
-        "shadow-sm shadow-black/20",
-        "text-slate-50",
-      ].join(" ");
-      span.textContent = token;
-    }
-    pronRow.appendChild(span);
-  });
+  const pronRow = createPronunciationRow(pronStr, "text-xl");
 
   // Target script (smaller subtitle)
   const target = document.createElement("div");
@@ -278,26 +263,10 @@ function createPhraseItem(phrase) {
     politeLabel.className = "mt-2 text-[10px] uppercase tracking-wide text-slate-400";
     politeLabel.textContent = "Polite";
 
-    const politePronRow = document.createElement("div");
-    politePronRow.className = "mt-1 flex flex-wrap items-center gap-1.5";
-    tokenizePronunciation(getPronunciation(phrase, state.targetLanguage, true)).forEach((token) => {
-      const span = document.createElement("span");
-      if (["/", "?", "!", ","].includes(token)) {
-        span.className = "px-1 text-slate-400";
-        span.textContent = token;
-      } else {
-        span.className = [
-          "text-base leading-tight",
-          "px-1.5 py-0.5",
-          "rounded-lg",
-          "bg-white/10 ring-1 ring-white/15",
-          "shadow-sm shadow-black/20",
-          "text-slate-50",
-        ].join(" ");
-        span.textContent = token;
-      }
-      politePronRow.appendChild(span);
-    });
+    const politePronRow = createPronunciationRow(
+      getPronunciation(phrase, state.targetLanguage, true),
+      "text-base"
+    );
 
     const politeTarget = document.createElement("div");
     politeTarget.className = "mt-2 text-sm text-slate-300/90";
@@ -331,7 +300,7 @@ function tokenizePronunciation(pron) {
       tokens.push(w);
     } else {
       // Split hyphenated syllables, keep as individual tokens
-      w.split("-").forEach((syll, idx) => {
+      w.split("-").forEach((syll) => {
         if (syll) tokens.push(syll);
       });
     }
@@ -585,7 +554,7 @@ async function init() {
   // Register Service Worker and request persistent storage
   if ("serviceWorker" in navigator) {
     try {
-      await navigator.serviceWorker.register("/sw.js");
+      await navigator.serviceWorker.register("./sw.js");
     } catch (_) {
       // ignore
     }
@@ -623,6 +592,4 @@ async function init() {
 }
 
 document.addEventListener("DOMContentLoaded", init);
-
-// (Removed) condense-on-scroll
 
